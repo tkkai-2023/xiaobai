@@ -1,6 +1,7 @@
 import json
 import datetime
 import random
+import os
 from objects.item import Item
 from objects.leetcode_classify import LeetCodeClassify
 
@@ -19,6 +20,7 @@ def load_items_from_json(filename):
 def add_new_item(items, leetcode_classifier):
     date_str = input("请输入日期（格式 YYYY-MM-DD):")
     leetcode_id = int(input("请输入leetcode题号:"))
+    leetcode_url = input("请输入leetcode题号对应的url:")
     difficulty = input("请输入难易度(1-easy, 2-medium, 3-hard):")
     time_cost = input("请输入刷题耗时(min:sec):")
     tag = input("请输入题目tag类型(贪心/双指针/二叉树...):")
@@ -36,7 +38,7 @@ def add_new_item(items, leetcode_classifier):
         "times": 1, # 自动设置times = 1
         "tag": tag
     }
-    new_item = Item(leetcode_id, new_meta) 
+    new_item = Item(leetcode_id, new_meta, leetcode_url =leetcode_url) 
     items.append(new_item)
     leetcode_classifier.add_problem_to_category(leetcode_id, tag)
     print(f"新条目已添加:{new_item}")
@@ -132,41 +134,19 @@ def get_recommended_problems(items: list[Item], leetcode_classifier: LeetCodeCla
 
 # 修改后的当天题目显示函数
 def get_today_questions(items):
-    """以表格形式打印当天刷题记录"""
-    today = datetime.date.today()
-    today_items = [x for x in items if x.date == today]
-    
-    if not today_items:
-        print("今天还没有刷题记录")
-        return
-    
-    # 表格列定义
-    headers = ["题目ID", "难度", "耗时", "次数", "分类"]
-    col_widths = [10, 10, 10, 8, 15]
-    
-    # 打印表头
-    print(f"\n今日刷题记录（共{len(today_items)}道）:")
-    print("-" * (sum(col_widths) + len(headers) - 1))
-    header_line = "|".join([h.center(w) for h, w in zip(headers, col_widths)])
-    print(header_line)
-    print("-" * (sum(col_widths) + len(headers) - 1))
-    
-    # 打印数据行
-    for item in today_items:
-        row = [
-            str(item.leetcode_id).center(10),
-            item.difficulty.center(10),
-            item.time_cost.center(10),
-            str(item.times).center(8),
-            item.tag[:14].center(15)
-        ]
-        print("|".join(row))
-    
-    print("-" * (sum(col_widths) + len(headers) - 1))
+    sorted_items = [x for x in items if x.date == datetime.datetime.now().date()]
+    print(f"今天已经刷的题有{len(sorted_items)}道:")
+    for i in sorted_items:
+        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
+            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.leetcode_url}")
 
 # 主程序入口
 def main():
     filename = './data/leetcode_list.json'
+    if not os.path.exists(filename):
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump([], f, ensure_ascii=False, indent=4)
+
     items = load_items_from_json(filename)
     leetcode_classifier = LeetCodeClassify()
     
