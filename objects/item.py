@@ -49,6 +49,7 @@ class Item:
         ).date()
         return cls(
             leetcode_id=data["leetcode_id"],
+            leetcode_url=data["leetcode_url"],
             meta=meta
         )
 

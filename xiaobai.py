@@ -102,8 +102,8 @@ def get_today_questions(items):
     sorted_items = [x for x in items if x.date == datetime.datetime.now().date()]
     print(f"今天已经刷的题有{len(sorted_items)}道:")
     for i in sorted_items:
-        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t \n"
-            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}")
+        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
+            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.leetcode_url}")
 
 # 主程序入口
 def main():
