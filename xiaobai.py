@@ -69,10 +69,10 @@ def update_item_by_id(items, leetcode_classifier):
         if time_cost:
             new_meta["time_cost"] = time_cost
         new_meta["times"] += 1
-        new_meta["tag"] = tag
-
+        if tag:
+            new_meta["tag"] = tag
+            leetcode_classifier.update_problem_categories(leetcode_id, [tag])
         item_to_update.meta = new_meta
-        leetcode_classifier.update_problem_categories(leetcode_id, [tag])
         print(f"对应题号信息已更新: {item_to_update}")
     else:
         print("未找到对应的题号。")
@@ -86,7 +86,6 @@ def get_item_sorted_by_date_and_time_cost(items, leetcode_classifier):
     # print(sorted_items[0].tag, sorted_items[0].leetcode_id)
     l = leetcode_classifier.get_related_problems(sorted_items[0].leetcode_id, sorted_items[0].tag)
     print(f"今天要刷的题有:")
-    # print(len(l))
 
     if len(l) > 0:
         for i in l:
@@ -95,13 +94,75 @@ def get_item_sorted_by_date_and_time_cost(items, leetcode_classifier):
         for i in sorted_items[:random_number]:
             print(f"{i.leetcode_id}\t")
 
-# 获取当天所刷的所有题目
+# 添加题目得分计算函数
+def calculate_problem_score(item: Item) -> float:
+    """计算单个题目的推荐得分（0-10）"""
+    time_score = min(item.time_cost_in_seconds() / 1800 * 5, 5)  # 耗时占5分
+    days_old = (datetime.date.today() - item.date).days
+    date_score = min(days_old / 30 * 5, 5)  # 旧时间占5分
+    return round(time_score + date_score, 2)
+
+# 替换原有的get_item_sorted_by_date_and_time_cost函数
+def get_recommended_problems(items: list[Item], leetcode_classifier: LeetCodeClassify):
+    # 计算所有标签得分
+    tag_scores = leetcode_classifier.calculate_tag_scores(items)
+    
+    if not tag_scores:
+        print("暂无分类信息，随机推荐:")
+        random_items = random.sample(items, min(3, len(items)))
+        for item in random_items:
+            print(f"题目ID：{item.leetcode_id}")
+        return
+    
+    # 找到最高分标签
+    max_score = max(tag_scores.values())
+    max_tags = [tag for tag, score in tag_scores.items() if score == max_score]
+    selected_tag = random.choice(max_tags)  # 如果有多个，随机选一个
+    
+    # 获取该标签下所有题目并计算单个题目得分
+    problem_ids = leetcode_classifier.data["category_to_problems"][selected_tag]
+    tag_items = [item for item in items if item.leetcode_id in problem_ids]
+    sorted_items = sorted(tag_items, key=lambda x: calculate_problem_score(x), reverse=True)
+    
+    # 推荐前3题或全部
+    print(f"推荐类型：{selected_tag}（得分：{tag_scores[selected_tag]}/10）")
+    for item in sorted_items[:3]:
+        print(f"题目ID：{item.leetcode_id}（得分：{calculate_problem_score(item)}）")
+
+
+# 修改后的当天题目显示函数
 def get_today_questions(items):
-    sorted_items = [x for x in items if x.date == datetime.datetime.now().date()]
-    print(f"今天已经刷的题有{len(sorted_items)}道:")
-    for i in sorted_items:
-        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t \n"
-            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}")
+    """以表格形式打印当天刷题记录"""
+    today = datetime.date.today()
+    today_items = [x for x in items if x.date == today]
+    
+    if not today_items:
+        print("今天还没有刷题记录")
+        return
+    
+    # 表格列定义
+    headers = ["题目ID", "难度", "耗时", "次数", "分类"]
+    col_widths = [10, 10, 10, 8, 15]
+    
+    # 打印表头
+    print(f"\n今日刷题记录（共{len(today_items)}道）:")
+    print("-" * (sum(col_widths) + len(headers) - 1))
+    header_line = "|".join([h.center(w) for h, w in zip(headers, col_widths)])
+    print(header_line)
+    print("-" * (sum(col_widths) + len(headers) - 1))
+    
+    # 打印数据行
+    for item in today_items:
+        row = [
+            str(item.leetcode_id).center(10),
+            item.difficulty.center(10),
+            item.time_cost.center(10),
+            str(item.times).center(8),
+            item.tag[:14].center(15)
+        ]
+        print("|".join(row))
+    
+    print("-" * (sum(col_widths) + len(headers) - 1))
 
 # 主程序入口
 def main():
@@ -114,8 +175,9 @@ def main():
         print("2. 更新已刷的题")
         print("3. 查看所有题信息")
         print("4. 今天刷哪些题呀？")
-        print("5. 看看今天刷了哪些题了？")
-        print("6. 结束")
+        print("5. 显示分类分数表")
+        print("6. 查看今日刷题记录")
+        print("7. 结束")
 
         
         choice = input("请选择操作：")
@@ -130,14 +192,16 @@ def main():
             for item in items:
                 print(item)
         elif choice == '4':
-            get_item_sorted_by_date_and_time_cost(items, leetcode_classifier)
-            break
+            get_recommended_problems(items, leetcode_classifier)
         elif choice == '5':
-            get_today_questions(items)
-            break
+            leetcode_classifier.print_tag_scores_table(items)
         elif choice == '6':
+            get_today_questions(items)
+        elif choice == '7':
             print("byebye...")
             break
+
+
         else:
             print("无效的选择，请重新输入。")
 
