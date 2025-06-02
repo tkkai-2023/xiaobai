@@ -1,6 +1,7 @@
 import json
 import datetime
 import random
+import os
 from objects.item import Item
 from objects.leetcode_classify import LeetCodeClassify
 
@@ -19,6 +20,7 @@ def load_items_from_json(filename):
 def add_new_item(items, leetcode_classifier):
     date_str = input("请输入日期（格式 YYYY-MM-DD):")
     leetcode_id = int(input("请输入leetcode题号:"))
+    leetcode_url = input("请输入leetcode题号对应的url:")
     difficulty = input("请输入难易度(1-easy, 2-medium, 3-hard):")
     time_cost = input("请输入刷题耗时(min:sec):")
     tag = input("请输入题目tag类型(贪心/双指针/二叉树...):")
@@ -36,7 +38,7 @@ def add_new_item(items, leetcode_classifier):
         "times": 1, # 自动设置times = 1
         "tag": tag
     }
-    new_item = Item(leetcode_id, new_meta) 
+    new_item = Item(leetcode_id, new_meta, leetcode_url =leetcode_url) 
     items.append(new_item)
     leetcode_classifier.add_problem_to_category(leetcode_id, tag)
     print(f"新条目已添加:{new_item}")
@@ -106,6 +108,10 @@ def get_today_questions(items):
 # 主程序入口
 def main():
     filename = './data/leetcode_list.json'
+    if not os.path.exists(filename):
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump([], f, ensure_ascii=False, indent=4)
+
     items = load_items_from_json(filename)
     leetcode_classifier = LeetCodeClassify()
     
