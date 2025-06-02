@@ -129,7 +129,7 @@ def get_recommended_problems(items: list[Item], leetcode_classifier: LeetCodeCla
     # 推荐前3题或全部
     print(f"推荐类型：{selected_tag}（得分：{tag_scores[selected_tag]}/10）")
     for item in sorted_items[:3]:
-        print(f"题目ID：{item.leetcode_id}（得分：{calculate_problem_score(item)}）")
+        print(f"题目ID：{item.leetcode_id}（得分：{calculate_problem_score(item)}）(链接：{item.leetcode_url})")
 
 
 # 修改后的当天题目显示函数
@@ -139,6 +139,21 @@ def get_today_questions(items):
     for i in sorted_items:
         print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
             f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.leetcode_url}")
+
+# 复习最近几天的题目
+def review_problems(items, date_period):
+    today = datetime.date.today()
+    start_date = today - datetime.timedelta(days=date_period)
+
+    # 过滤出最近 `date_period` 天内的 item
+    recent_items = [x for x in items if start_date <= x.date <= today]
+    print(f"{date_period}天内做过的需要复习的题有{len(recent_items)}道:")
+    for i in recent_items:
+        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
+            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.leetcode_url}")
+
+
+
 
 # 主程序入口
 def main():
@@ -157,7 +172,8 @@ def main():
         print("4. 今天刷哪些题呀？")
         print("5. 显示分类分数表")
         print("6. 查看今日刷题记录")
-        print("7. 结束")
+        print("7. 查看需要复习的题目")
+        print("8. 结束")
 
         
         choice = input("请选择操作：")
@@ -178,6 +194,14 @@ def main():
         elif choice == '6':
             get_today_questions(items)
         elif choice == '7':
+
+            review_choice = input("请选择复习的天数（1, 2, 4, 7, 15）：")
+            if review_choice in ['1', '2', '4', '7', '15']:
+                review_problems(items, int(review_choice))
+
+
+            
+        elif choice == '8':
             print("byebye...")
             break
 
