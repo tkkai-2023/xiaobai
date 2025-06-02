@@ -53,6 +53,7 @@ def update_item_by_id(items, leetcode_classifier):
     if item_to_update:
         print(f"找到题目: {item_to_update}")
         date_str = input(f"请输入新的日期（当前日期: {item_to_update.date}，格式 YYYY-MM-DD, 不输入默认更新成今日):")
+        leetcode_url = input(f"请输入leetcode题号对应的url(当前url: {item_to_update.leetcode_url}):")
         difficulty = input(f"请输入新的难易度(1-easy, 2-medium, 3-hard) 当前难易度:{item_to_update.difficulty}):")
         time_cost = input(f"请输入刷题耗时(min:sec) 当前耗时: {item_to_update.time_cost}):")
         tag = input(f"请输入题目tag类型(贪心/双指针/二叉树...) 当前tag类型: {item_to_update.tag}):")
@@ -65,6 +66,9 @@ def update_item_by_id(items, leetcode_classifier):
         else:
             date = datetime.datetime.now().date()
             new_meta["date"] = date
+        
+        if leetcode_url:
+            item_to_update.leetcode_url = leetcode_url
 
         if difficulty:
             new_meta["difficulty"] = difficulty
