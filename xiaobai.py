@@ -162,6 +162,10 @@ def review_problems(items, date_period):
 # 主程序入口
 def main():
     filename = './data/leetcode_list.json'
+    folder_path = './data'
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
     if not os.path.exists(filename):
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump([], f, ensure_ascii=False, indent=4)
