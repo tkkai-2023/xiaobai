@@ -36,9 +36,10 @@ def add_new_item(items, leetcode_classifier):
         "difficulty": difficulty,
         "time_cost": time_cost,
         "times": 1, # 自动设置times = 1
-        "tag": tag
+        "tag": tag,
+        "leetcode_url": leetcode_url
     }
-    new_item = Item(leetcode_id, new_meta, leetcode_url =leetcode_url) 
+    new_item = Item(leetcode_id, new_meta) 
     items.append(new_item)
     leetcode_classifier.add_problem_to_category(leetcode_id, tag)
     print(f"新条目已添加:{new_item}")
@@ -68,7 +69,7 @@ def update_item_by_id(items, leetcode_classifier):
             new_meta["date"] = date
         
         if leetcode_url:
-            item_to_update.leetcode_url = leetcode_url
+            new_meta["leetcode_url"] = leetcode_url
 
         if difficulty:
             new_meta["difficulty"] = difficulty
@@ -142,7 +143,7 @@ def get_today_questions(items):
     print(f"今天已经刷的题有{len(sorted_items)}道:")
     for i in sorted_items:
         print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
-            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.leetcode_url}")
+            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.meta['leetcode_url']}")
 
 # 复习最近几天的题目
 def review_problems(items, date_period):
@@ -154,7 +155,7 @@ def review_problems(items, date_period):
     print(f"{date_period}天内做过的需要复习的题有{len(recent_items)}道:")
     for i in recent_items:
         print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
-            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.leetcode_url}")
+            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.meta['leetcode_url']}")
 
 
 

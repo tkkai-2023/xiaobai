@@ -1,10 +1,10 @@
 import datetime
 
 class Item:
-    def __init__(self, leetcode_id: int, meta: dict, leetcode_url: str):
+    def __init__(self, leetcode_id: int, meta: dict):
         self.leetcode_id = leetcode_id  # 题目ID作为独立属性
         self.meta = meta  # 其他属性统一存入meta字典
-        self.leetcode_url = leetcode_url
+
         
         # 确保meta包含必要字段的默认值（可选）
         self.meta.setdefault("date", datetime.date.today())
@@ -16,7 +16,7 @@ class Item:
         return (
             f"题目: \n"
             f"  leetcode_id={self.leetcode_id}\n"
-            f"  leetcode_url={self.leetcode_url}\n"
+            f"  leetcode_url={self.meta['leetcode_url']}\n"
             f"  date={self.meta['date']}\n"
             f"  difficulty={self.meta['difficulty']}\n"
             f"  time_cost={self.meta['time_cost']}\n"
@@ -28,14 +28,14 @@ class Item:
         """序列化为字典（包含日期格式化）"""
         return {
             "leetcode_id": self.leetcode_id,
-            "leetcode_url": self.leetcode_url,
             "meta": {
                 # 日期序列化为ISO字符串
                 "date": self.meta["date"].isoformat(),
                 "difficulty": self.meta["difficulty"],
                 "time_cost": self.meta["time_cost"],
                 "times": self.meta["times"],
-                "tag": self.meta["tag"]
+                "tag": self.meta["tag"],
+                "leetcode_url": self.meta["leetcode_url"],
             }
         }
 
@@ -49,7 +49,6 @@ class Item:
         ).date()
         return cls(
             leetcode_id=data["leetcode_id"],
-            leetcode_url=data["leetcode_url"],
             meta=meta
         )
 
@@ -86,3 +85,6 @@ class Item:
     @property
     def tag(self) -> str:
         return self.meta["tag"]
+    @property
+    def leetcode_url(self) -> str:
+        return self.meta["leetcode_url"]
