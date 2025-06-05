@@ -142,24 +142,200 @@ def get_today_questions(items):
     sorted_items = [x for x in items if x.date == datetime.datetime.now().date()]
     print(f"今天已经刷的题有{len(sorted_items)}道:")
     for i in sorted_items:
-        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
+        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t\t |链接|\t \n"
             f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.meta['leetcode_url']}")
 
-# 复习最近几天的题目
-def review_problems(items, date_period):
-    today = datetime.date.today()
-    start_date = today - datetime.timedelta(days=date_period)
+def review_problems(items, leetcode_classifier):
+    """复习题目 - 支持按题目或类型排序"""
+    from colorama import init, Fore, Back, Style
+    init()  # 初始化颜色输出
+    
+    # 标题装饰
+    title = Back.BLUE + Fore.WHITE + " 复习模式 ".center(80, "=") + Style.RESET_ALL
+    print(f"\n{title}")
+    print(Fore.CYAN + "1. 按题目复习（基于遗忘曲线评分）")
+    print("2. 按类型复习（基于分类评分）" + Style.RESET_ALL)
+    mode = input("\n请选择复习模式 (1/2): ")
+    
+    if mode == '1':
+        # 按题目复习
+        sorted_items = sorted(
+            items, 
+            key=lambda item: item.calculate_review_score(), 
+            reverse=True
+        )
+        
+        # 表格标题
+        print("\n" + Fore.YELLOW + "=" * 100)
+        title = "复习优先级排序（分数越高越需要复习）"
+        print(f"{title:^100}")
+        print("=" * 100 + Style.RESET_ALL)
+        
+        # 表头
+        headers = ["题号", "日期", "难度", "耗时", "次数", "类型", "分数", "链接"]
+        col_widths = [8, 12, 8, 10, 8, 26, 10, 32]
+        r_col_widths = [10, 14, 10, 12, 10, 28, 12, 34]
 
-    # 过滤出最近 `date_period` 天内的 item
-    recent_items = [x for x in items if start_date <= x.date <= today]
-    print(f"{date_period}天内做过的需要复习的题有{len(recent_items)}道:")
-    for i in recent_items:
-        print(f"|题目|\t |日期|\t\t|难度|\t |耗时|\t |次数|\t |类型|\t |链接|\t \n"
-            f" {i.leetcode_id}\t  {i.meta['date']}\t {i.meta['difficulty']}\t  {i.meta['time_cost']}\t  {i.meta['times']}\t   {i.meta['tag']}\t  {i.meta['leetcode_url']}")
+        # 打印表头
+        header_line = "│".join([h.center(w) for h, w in zip(headers, col_widths)])
+        print("│" + header_line + "│")
+        print("├" + "┼".join(["─" * w for w in r_col_widths]) + "┤")
+        
+        # 打印数据行
+        for item in sorted_items[:20]:  # 显示前20个
+            score = item.calculate_review_score()
+            # 根据分数设置颜色
+            color = Fore.RED if score > 5 else Fore.YELLOW if score > 3 else Fore.GREEN
+            
+            # 准备数据
+            data = [
+                str(item.leetcode_id),
+                item.date.strftime('%Y-%m-%d'),
+                _get_difficulty_color(item.difficulty),
+                item.time_cost,
+                str(item.times),
+                item.tag[:18],
+                f"{score:.2f}",
+                item.leetcode_url
+            ]
+            
+            # 打印行
+            row = "│".join([d.center(w) for d, w in zip(data, r_col_widths)])
+            print( "|" + color + row + Style.RESET_ALL )
+        
+        # 表格底部
+        print("└" + "┴".join(["─" * w for w in r_col_widths]) )
+        
+        # 分数说明
+        print(Fore.CYAN + "\n分数说明: " + 
+              Fore.RED + "> 5.0 (急需复习)  " + 
+              Fore.YELLOW + "3.0-5.0 (建议复习)  " + 
+              Fore.GREEN + "< 3.0 (已掌握)" + 
+              Style.RESET_ALL)
+    
+    elif mode == '2':
+        # 按类型复习
+        tag_scores = leetcode_classifier.calculate_tag_review_scores(items)
+        if not tag_scores:
+            print(Fore.RED + "暂无分类信息" + Style.RESET_ALL)
+            return
+        
+        # 按分数排序
+        sorted_tags = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        # 类型表格
+        print("\n" + Fore.YELLOW + "=" * 60)
+        title = "类型复习优先级（分数越高越需要复习）"
+        print(f"{title:^60}")
+        print("=" * 60 + Style.RESET_ALL)
+        
+        # 表头
+        headers = ["类型", "平均分数", "题目数量", "状态"]
+        col_widths = [20, 15, 15, 15]
+        r_col_widths = [22, 19, 19, 17]
+        
+        
+        # 打印表头
+        header_line = "│".join([h.center(w) for h, w in zip(headers, col_widths)])
+        print("│" + header_line + "│")
+        print("├" + "┼".join(["─" * w for w in r_col_widths]) + "┤")
+        
+        # 打印数据行
+        for tag, score in sorted_tags:
+            count = len(leetcode_classifier.data["category_to_problems"].get(tag, []))
+            # 根据分数设置颜色和状态
+            if score > 5:
+                color, status = Fore.RED, "急需复习"
+            elif score > 3:
+                color, status = Fore.YELLOW, "建议复习"
+            else:
+                color, status = Fore.GREEN, "已掌握"
+            
+            # 准备数据
+            data = [
+                tag[:18],
+                f"{score:.2f}",
+                str(count),
+                status
+            ]
+            
+            # 打印行
+            row = "│".join([d.center(w) for d, w in zip(data, r_col_widths)])
+            print("│" + color + row + Style.RESET_ALL + "│")
+        
+        # 表格底部
+        print("└" + "┴".join(["─" * w for w in r_col_widths]) + "┘")
+        
+        # 让用户选择具体类型查看题目
+        selected_tag = input("\n输入要查看的类型（直接回车返回）: ")
+        if selected_tag:
+            problem_ids = leetcode_classifier.data["category_to_problems"].get(selected_tag, [])
+            tag_items = [item for item in items if item.leetcode_id in problem_ids]
+            
+            if not tag_items:
+                print(Fore.RED + f"类型 '{selected_tag}' 下无题目" + Style.RESET_ALL)
+                return
+            
+            # 按分数排序该类型下的题目
+            sorted_items = sorted(
+                tag_items, 
+                key=lambda item: item.calculate_review_score(), 
+                reverse=True
+            )
+            
+            # 题目详情表格
+            print("\n" + Fore.YELLOW + "=" * 100)
+            title = f"类型【{selected_tag}】下的题目（按复习优先级排序）"
+            print(f"{title:^100}")
+            print("=" * 100 + Style.RESET_ALL)
+            
+            # 表头
+            headers = ["题号", "日期", "难度", "耗时", "次数", "分数", "链接"]
+            col_widths = [8, 12, 8, 10, 8, 10, 42]
+            r_col_widths = [10, 14, 10, 12, 10, 12, 44]
 
+            
+            # 打印表头
+            header_line = "│".join([h.center(w) for h, w in zip(headers, col_widths)])
+            print("│" + header_line + "│")
+            print("├" + "┼".join(["─" * w for w in r_col_widths]) + "┤")
+            
+            # 打印数据行
+            for item in sorted_items:
+                score = item.calculate_review_score()
+                color = Fore.RED if score > 5 else Fore.YELLOW if score > 3 else Fore.GREEN
+                
+                # 准备数据
+                data = [
+                    str(item.leetcode_id),
+                    item.date.strftime('%Y-%m-%d'),
+                    _get_difficulty_color(item.difficulty),
+                    item.time_cost,
+                    str(item.times),
+                    f"{score:.2f}",
+                    item.leetcode_url
+                ]
+                
+                # 打印行
+                row = "│".join([d.center(w) for d, w in zip(data, r_col_widths)])
+                print("│" + color + row + Style.RESET_ALL )
+            
+            # 表格底部
+            print("└" + "┴".join(["─" * w for w in r_col_widths]) )
 
-
-
+def _get_difficulty_color(difficulty):
+    """获取难度颜色和符号"""
+    from colorama import Fore
+    diff = difficulty.lower()
+    if diff == "easy":
+        return Fore.GREEN + "★" + Fore.RESET
+    elif diff == "medium":
+        return Fore.YELLOW + "★★" + Fore.RESET
+    elif diff == "hard":
+        return Fore.RED + "★★★" + Fore.RESET
+    else:
+        return difficulty
+    
 # 主程序入口
 def main():
     filename = './data/leetcode_list.json'
@@ -203,10 +379,7 @@ def main():
         elif choice == '6':
             get_today_questions(items)
         elif choice == '7':
-
-            review_choice = input("请选择复习的天数（1, 2, 4, 7, 15）：")
-            if review_choice in ['1', '2', '4', '7', '15']:
-                review_problems(items, int(review_choice))
+            review_problems(items, leetcode_classifier)
 
 
             

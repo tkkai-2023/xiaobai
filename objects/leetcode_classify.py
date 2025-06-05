@@ -187,3 +187,18 @@ class LeetCodeClassify:
             print("|".join(row))
         
         print("-" * (sum(col_widths) + 3*len(headers)))
+
+    def calculate_tag_review_scores(self, items: list[Item]) -> dict[str, float]:
+        """计算每个tag的复习得分（基于该分类下所有题目的平均复习得分）"""
+        tag_scores = {}
+        for tag, problem_ids in self.data["category_to_problems"].items():
+            # 获取该tag下所有题目对象
+            tag_items = [item for item in items if item.leetcode_id in problem_ids]
+            if not tag_items:
+                continue
+            
+            # 计算平均复习得分
+            avg_score = sum(item.calculate_review_score() for item in tag_items) / len(tag_items)
+            tag_scores[tag] = round(avg_score, 2)
+        
+        return tag_scores

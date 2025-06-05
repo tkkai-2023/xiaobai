@@ -1,4 +1,5 @@
 import datetime
+import math
 
 class Item:
     def __init__(self, leetcode_id: int, meta: dict):
@@ -64,7 +65,33 @@ class Item:
                 raise ValueError("Invalid time format")
         except (ValueError, AttributeError):
             return 0
-
+    def calculate_review_score(self) -> float:
+        """计算复习分数（基于遗忘曲线、难度、耗时）"""
+        # 艾宾浩斯遗忘曲线参数（复习间隔天数）
+        ebbinghaus_intervals = [1, 2, 4, 7, 15]
+        
+        # 难度权重（难度越大，分数越高）
+        difficulty_weights = {"easy": 1, "medium": 1.5, "hard": 2}
+        
+        # 计算距今天数
+        days_since_last = (datetime.datetime.now().date() - self.date).days
+        
+        # 获取最近复习间隔（基于复习次数）
+        interval_index = min(self.times - 1, len(ebbinghaus_intervals) - 1)
+        ideal_interval = ebbinghaus_intervals[interval_index] if interval_index >= 0 else 0
+        
+        # 计算遗忘惩罚因子（超过理想间隔越多，分数越高）
+        forget_factor = max(1, math.log(max(1, days_since_last - ideal_interval) + 1))
+        
+        # 计算耗时因子（耗时越长，分数越高）
+        time_factor = min(5, self.time_cost_in_seconds() / 60)  # 每分钟增加1分
+        
+        # 计算难度因子
+        diff_factor = difficulty_weights.get(self.difficulty.lower(), 1)
+        
+        # 综合评分 = 遗忘因子 * 难度因子 + 耗时因子
+        return round(forget_factor * diff_factor + time_factor, 2)
+    
     # 可选：通过属性快速访问常用字段（保持旧代码兼容性）
     @property
     def date(self) -> datetime.date:
