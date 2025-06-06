@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from objects.item import Item
 import datetime
+from colorama import init, Fore, Style
+
 
 class LeetCodeClassify:
     def __init__(self, data_path: str = "data/classification.json"):
@@ -144,46 +146,206 @@ class LeetCodeClassify:
         
         return tag_scores
     
-    # 添加在LeetCodeClassify类中的方法
-    def print_tag_scores_table(self, items: list[Item]) -> None:
-        """以表格形式打印所有分类的分数"""
-        tag_scores = self.calculate_tag_scores(items)
-        if not tag_scores:
-            print("暂无分类分数信息")
+    def calculate_tag_review_scores(self, items: list[Item]) -> dict[str, float]:
+        """计算每个tag的复习得分（基于该分类下所有题目的平均复习得分）"""
+        tag_scores = {}
+        for tag, problem_ids in self.data["category_to_problems"].items():
+            # 获取该tag下所有题目对象
+            tag_items = [item for item in items if item.leetcode_id in problem_ids]
+            if not tag_items:
+                continue
+            
+            # 计算平均复习得分
+            avg_score = sum(item.calculate_review_score() for item in tag_items) / len(tag_items)
+            tag_scores[tag] = round(avg_score, 2)
+        
+        return tag_scores
+    
+    def print_items_table(self, items, title):
+        """打印题目列表的表格视图"""
+        init()
+        
+        if not items:
+            print(Fore.YELLOW + f"没有{title}题目" + Style.RESET_ALL)
             return
         
-        # 表格列定义
-        headers = ["分类名称", "平均耗时", "最旧日期", "题目数量", "综合得分"]
-        col_widths = [16, 18, 16, 10, 10]
+        # 表头
+        headers = ["题号", "日期", "难度", "耗时", "次数", "类型", "链接"]
+        col_widths = [8, 10, 10, 10, 10, 10, 46]
+        r_col_widths = [10, 12, 12, 12, 12, 12, 48]
+        
+        # 表格标题
+        print("\n" + Fore.YELLOW + "=" * 100)
+        print(f"{title:^100}")
+        print("=" * 100 + Style.RESET_ALL)
         
         # 打印表头
-        header_line = "|".join([h.center(w) for h, w in zip(headers, col_widths)])
-        print(f"\n{'分类分数汇总':^70}")
-        print("-" * (sum(col_widths) + 3*len(headers)))
-        print(header_line)
-        print("-" * (sum(col_widths) + 3*len(headers)))
+        header_line = "│".join([h.center(w) for h, w in zip(headers, col_widths)])
+        print("│" + header_line + "│")
+        print("├" + "┼".join(["─" * w for w in r_col_widths]) + "┤")
         
         # 打印数据行
-        for tag, score in sorted(tag_scores.items(), key=lambda x: x[1], reverse=True):
+        for item in items:
+            # 准备数据
+            data = [
+                str(item.leetcode_id),
+                item.date.strftime('%Y-%m-%d'),
+                self._get_difficulty_symbol(item.difficulty),
+                item.time_cost,
+                str(item.times),
+                item.tag[:10],
+                item.leetcode_url
+            ]
+            
+            # 打印行
+            row = "│".join([d.center(w) for d, w in zip(data, r_col_widths)])
+            print("│" + row + "│")
+        
+        # 表格底部
+        print("└" + "┴".join(["─" * w for w in r_col_widths]) + "┘")
+        print(Fore.CYAN + f"共 {len(items)} 道题目" + Style.RESET_ALL)
+
+    def print_recommended_problems(self, items):
+        """打印推荐题目的精美表格"""
+        # from colorama import init, Fore, Style
+        init()
+        
+        if not items:
+            print(Fore.YELLOW + "没有推荐题目" + Style.RESET_ALL)
+            return
+        
+        # 表头
+        headers = ["题号", "日期", "难度", "耗时", "次数", "类型", "推荐理由", "链接"]
+        col_widths = [6, 10, 10, 10, 10, 10, 15, 35]
+        r_col_widths = [8, 10, 12, 12, 12, 12, 12, 15, 35]
+
+        # 表格标题
+        print("\n" + Fore.YELLOW + "=" * 100)
+        print(f"{'推荐题目':^100}")
+        print("=" * 100 + Style.RESET_ALL)
+        
+        # 打印表头
+        header_line = "│".join([h.center(w) for h, w in zip(headers, col_widths)])
+        print("│" + header_line + "│")
+        print("├" + "┼".join(["─" * w for w in r_col_widths]) + "┤")
+        
+        # 打印数据行
+        for item in items:
+            # 生成推荐理由
+            days_old = (datetime.date.today() - item.date).days
+            if days_old > 30:
+                reason = "长期未复习"
+            elif item.time_cost_in_seconds() > 1200:  # 20分钟
+                reason = "耗时过长"
+            elif item.times == 1:
+                reason = "首次练习"
+            else:
+                reason = "需要巩固"
+            
+            # 准备数据
+            data = [
+                str(item.leetcode_id),
+                item.date.strftime('%Y-%m-%d'),
+                self._get_difficulty_symbol(item.difficulty),
+                item.time_cost,
+                str(item.times),
+                item.tag[:10],
+                reason,
+                item.leetcode_url[:33] + "..." if len(item.leetcode_url) > 33 else item.leetcode_url
+            ]
+            
+            # 打印行
+            row = "│".join([d.ljust(w) for d, w in zip(data, r_col_widths)])
+            print("│" + row + "│")
+        
+        # 表格底部
+        print("└" + "┴".join(["─" * w for w in r_col_widths]) + "┘")
+
+    def print_tag_scores_table(self, tag_scores, items):
+        """打印分类分数表的精美表格"""
+        # from colorama import init, Fore, Style
+        init()
+        
+        if not tag_scores:
+            print(Fore.YELLOW + "没有分类信息" + Style.RESET_ALL)
+            return
+        
+        # 表头
+        headers = ["分类", "平均耗时", "最旧题目日期", "题目数量", "综合得分", "状态"]
+        col_widths = [20, 12, 14, 10, 10, 15]
+        r_col_widths = [22, 16, 20, 14, 14, 17]
+
+        
+        # 表格标题
+        print("\n" + Fore.YELLOW + "=" * 100)
+        print(f"{'分类分数汇总':^85}")
+        print("=" * 100 + Style.RESET_ALL)
+        
+        # 打印表头
+        header_line = "│".join([h.center(w) for h, w in zip(headers, col_widths)])
+        print("│" + header_line + "│")
+        print("├" + "┼".join(["─" * w for w in r_col_widths]) + "┤")
+        
+        # 按分数排序
+        sorted_tags = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        # 打印数据行
+        for tag, score in sorted_tags:
             # 获取该分类的详细数据
             problem_ids = self.data["category_to_problems"][tag]
             tag_items = [item for item in items if item.leetcode_id in problem_ids]
             
+            # 计算统计数据
             avg_time = sum(i.time_cost_in_seconds() for i in tag_items)/len(tag_items)
             oldest_date = min(i.date for i in tag_items).strftime("%Y-%m-%d")
             nums = f"{len(tag_items)}"
-
+            
             # 格式转换
             avg_time_str = f"{int(avg_time//60)}:{int(avg_time%60):02d}"
             
-            # 构建行数据
-            row = [
-                tag[:10].center(20),
-                avg_time_str.center(20),
-                oldest_date.center(20),
-                nums.center(16),
-                str(score).center(16)
+            # 确定状态和颜色
+            if score > 6:
+                status = "urgent"
+                color = Fore.RED
+            elif score > 4:
+                status = "suggest"
+                color = Fore.YELLOW
+            else:
+                status = "you're good"
+                color = Fore.GREEN
+            
+            # 准备数据
+            data = [
+                tag[:18],
+                avg_time_str,
+                oldest_date,
+                nums,
+                f"{score:.2f}",
+                status
             ]
-            print("|".join(row))
+            
+            # 打印行
+            row = "│".join([d.center(w) for d, w in zip(data, r_col_widths)])
+            print("│" + color + row + Style.RESET_ALL + "│")
         
-        print("-" * (sum(col_widths) + 3*len(headers)))
+        # 表格底部
+        print("└" + "┴".join(["─" * w for w in r_col_widths]) + "┘")
+        
+        # 分数说明
+        print(Fore.CYAN + "分数说明: " + 
+            Fore.RED + ">6.0 (urgent 急需复习)  " + 
+            Fore.YELLOW + "4.0-6.0 (suggest 建议复习)  " + 
+            Fore.GREEN + "<4.0 (you're good 已掌握)" + 
+            Style.RESET_ALL)
+
+    def _get_difficulty_symbol(self, difficulty):
+        """获取难度符号"""
+        diff = difficulty.lower()
+        if diff == "easy":
+            return Fore.GREEN + "★" + Fore.RESET
+        elif diff == "medium":
+            return Fore.YELLOW + "★★" + Fore.RESET
+        elif diff == "hard":
+            return Fore.RED + "★★★" + Fore.RESET
+        else:
+            return difficulty
